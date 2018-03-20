@@ -4,7 +4,7 @@
  <title>Laurence</title>
  <link href="http://localhost:4000/atom.xml" rel="self"/>
  <link href="http://localhost:4000/"/>
- <updated>2018-03-20T16:24:05+08:00</updated>
+ <updated>2018-03-20T17:06:07+08:00</updated>
  <id>http://localhost:4000</id>
  <author>
    <name></name>
@@ -105,7 +105,8 @@ B有可能读到X的正确值，有可能读不到&lt;/p&gt;
 &lt;h2 id=&quot;理论&quot;&gt;理论&lt;/h2&gt;
 
 &lt;h4 id=&quot;cap定理&quot;&gt;CAP定理&lt;sup id=&quot;fnref:CAP&quot;&gt;&lt;a href=&quot;#fn:CAP&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;&lt;/h4&gt;
-&lt;p&gt;&lt;img src=&quot;https://res.infoq.com/articles/solution-of-distributed-system-transaction-consistency/zh/resources/000.png&quot; alt=&quot;CAP&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/public/cap.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;&lt;strong&gt;Consistency&lt;/strong&gt;&lt;br /&gt;
