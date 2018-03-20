@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+ <title>Laurence</title>
+ <link href="http://localhost:4000/atom.xml" rel="self"/>
+ <link href="http://localhost:4000/"/>
+ <updated>2018-03-20T16:21:51+08:00</updated>
+ <id>http://localhost:4000</id>
+ <author>
+   <name></name>
+   <email></email>
+ </author>
+
+ 
+ <entry>
+   <title>分布式一致性笔记</title>
+   <link href="http://localhost:4000/%E5%88%86%E5%B8%83%E5%BC%8F/2018/03/19/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E7%AC%94%E8%AE%B0.html"/>
+   <updated>2018-03-19T00:00:00+08:00</updated>
+   <id>http://localhost:4000/%E5%88%86%E5%B8%83%E5%BC%8F/2018/03/19/分布式一致性笔记</id>
+   <content type="html">&lt;h2 id=&quot;什么是分布式一致性&quot;&gt;什么是分布式一致性？&lt;/h2&gt;
+&lt;p&gt;分布式一致性是指Atomic Consistent, Every read receives the most recent write or an error。指的是请求之间的数据一致性。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The CAP theorem is based on three trade-offs, one of which is “atomic consistency” (shortened to “consistency” for the acronym), about which the authors note, “Discussing atomic consistency is somewhat different than talking about an ACID database, as database consistency refers to transactions, while atomic consistency refers only to a property of a single request/response operation sequence. And it has a different meaning than the Atomic in ACID, as it subsumes the database notions of both Atomic and Consistent.” &lt;sup id=&quot;fnref:consistent&quot;&gt;&lt;a href=&quot;#fn:consistent&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;与ACID中的C的意义并不相同。 ACID中的一致性指的是事务中的对数据的修改是一致的，没有违反相关的规则和约束，完成了完整的状态变迁。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The consistency property ensures that any transaction will bring the database from one valid state to another. Any data written to the database must be valid according to all defined rules, including constraints, cascades, triggers, and any combination thereof. This does not guarantee correctness of the transaction in all ways the application programmer might have wanted (that is the responsibility of application-level code), but merely that any programming errors cannot result in the violation of any defined rules. &lt;sup id=&quot;fnref:ACID&quot;&gt;&lt;a href=&quot;#fn:ACID&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;与内存的一致性模型也有区别，内存一致性是指不同的进程读写内存时对其他进程的可见性，具体模型可以查看wiki&lt;sup id=&quot;fnref:Consistent_model&quot;&gt;&lt;a href=&quot;#fn:Consistent_model&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt; 。&lt;/p&gt;
+
+&lt;p&gt;分布式一致性归根到底是在分布式环境下数据的一致性，从实现方式上，可以大体分为三类，以以下具体例子来说明：&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Assume that the following case occurs:&lt;/p&gt;
+
+  &lt;p&gt;The row X is replicated on nodes M and N&lt;br /&gt;
+The client A writes row X to node M&lt;br /&gt;
+After a period of time t, client B reads row X from node N&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The consistency model has to determine whether client B sees the write from client A or not.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;强一致性&lt;/strong&gt;&lt;br /&gt;
+ B马上可以读到X的正确值&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;弱一致性&lt;/strong&gt;&lt;br /&gt;
+B有可能读到X的正确值，有可能读不到&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;最终一致性&lt;/strong&gt;&lt;br /&gt;
+ 经过 t 时间，B一定可以读到X的正确值&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;为什么会存在分布式一致性&quot;&gt;为什么会存在分布式一致性？&lt;/h2&gt;
+
+&lt;h4 id=&quot;为什么数据要写多份&quot;&gt;为什么数据要写多份&lt;/h4&gt;
+&lt;ol&gt;
+  &lt;li&gt;单台机器会挂&lt;/li&gt;
+  &lt;li&gt;单台机器性能瓶颈&lt;/li&gt;
+  &lt;li&gt;架构使然，e.g. 微服务，领域划分&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h4 id=&quot;写多份为什么有一致性问题&quot;&gt;写多份为什么有一致性问题&lt;/h4&gt;
+&lt;ol&gt;
+  &lt;li&gt;节点异常 e.g. 机器挂了&lt;/li&gt;
+  &lt;li&gt;通信（网络）异常
+    &lt;ol&gt;
+      &lt;li&gt;消息丢失，e.g. 网络分区，网络设备故障&lt;/li&gt;
+      &lt;li&gt;消息乱序&lt;br /&gt;
+包级别的乱序可通过网络协议，如TCP解决；&lt;br /&gt;
+但消息与消息之间的全局顺序无法保证&lt;/li&gt;
+      &lt;li&gt;数据错误，可通过网络协议解决&lt;/li&gt;
+    &lt;/ol&gt;
+  &lt;/li&gt;
+  &lt;li&gt;服务异常
+    &lt;ol&gt;
+      &lt;li&gt;RPC的三态
+        &lt;ol&gt;
+          &lt;li&gt;成功&lt;/li&gt;
+          &lt;li&gt;失败&lt;/li&gt;
+          &lt;li&gt;超时（无法确定服务端处理状态）
+            &lt;ol&gt;
+              &lt;li&gt;客户端发送成功，服务端无响应&lt;/li&gt;
+              &lt;li&gt;服务端处理成功，未返回客户端&lt;/li&gt;
+            &lt;/ol&gt;
+          &lt;/li&gt;
+        &lt;/ol&gt;
+      &lt;/li&gt;
+    &lt;/ol&gt;
+  &lt;/li&gt;
+  &lt;li&gt;顺序问题&lt;br /&gt;
+当有多个客户端，多个服务端，多个存储时，全局的顺序无法保证。&lt;br /&gt;
+有可能网络拥堵，有可能进程处理缓慢，有可能硬件处理缓慢等。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;理论&quot;&gt;理论&lt;/h2&gt;
+
+&lt;h4 id=&quot;cap定理&quot;&gt;CAP定理&lt;sup id=&quot;fnref:CAP&quot;&gt;&lt;a href=&quot;#fn:CAP&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;&lt;/h4&gt;
+&lt;p&gt;&lt;img src=&quot;https://res.infoq.com/articles/solution-of-distributed-system-transaction-consistency/zh/resources/000.png&quot; alt=&quot;CAP&quot; /&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Consistency&lt;/strong&gt;&lt;br /&gt;
+Every read receives the most recent write or an error&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Availability&lt;/strong&gt;&lt;br /&gt;
+Every request receives a (non-error) response – without guarantee that it contains the most recent write&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Partition tolerance&lt;/strong&gt;&lt;br /&gt;
+The system continues to operate despite an arbitrary number of messages being dropped (or delayed) by the network between nodes&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;CAP理论指出了C、A、P无法同时满足。&lt;br /&gt;
+当出现分区问题时，如果保证了可用性，是无法保证一致性的。因为网络分区的出现，部分节点是不可达的。如果忽略网络分区，一致性和可用性都是可以保证的。&lt;br /&gt;
+所以CAP理论更多时候，是在出现网络分区问题时，可用性和一致性的取舍问题。&lt;br /&gt;
+选择可用性，必然会导致部分节点无法达到一致；选择一致性，必然要选择部分节点不可提供服务。&lt;/p&gt;
+
+&lt;h4 id=&quot;pacelc-定理&quot;&gt;PACELC 定理&lt;sup id=&quot;fnref:PACELC&quot;&gt;&lt;a href=&quot;#fn:PACELC&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt;&lt;/h4&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;In theoretical computer science, the PACELC theorem is an extension to the CAP theorem. It states that in case of network partitioning (P) in a distributed computer system, one has to choose between availability (A) and consistency (C) (as per the CAP theorem), but else (E), even when the system is running normally in the absence of partitions, one has to choose between latency (L) and consistency (C).&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;PACELC定理是CAP定理的延伸，是指在网络分区的情况下，需要在可用性和一致性之间做选择，否则，就在延迟和一致性之间做选择。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://coolshell.cn/wp-content/uploads/2014/01/Transaction-Across-DataCenter.jpg&quot; alt=&quot;&quot; /&gt;&lt;br /&gt;
+上图来自：Google App Engine的co-founder Ryan Barrett在2009年的google i/o上的演讲《Transaction Across DataCenter》&lt;/p&gt;
+
+&lt;h2 id=&quot;如何实现&quot;&gt;如何实现？&lt;/h2&gt;
+
+&lt;h4 id=&quot;从节点的组织形式上可以分成两类&quot;&gt;从节点的组织形式上可以分成两类：&lt;/h4&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;中心化副本控制协议 &lt;br /&gt;
+通过中心化节点来控制副本的更新来达成一致 e.g. Master-Slave，raft&lt;/li&gt;
+  &lt;li&gt;去中心化副本控制协议&lt;br /&gt;
+各节点地位相同，通过平等协商的方式来达到一致 e.g. Paxos&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h4 id=&quot;lease机制&quot;&gt;Lease机制&lt;/h4&gt;
+&lt;p&gt;Lease 是由颁发者授予的在某一有效期内的承诺。颁发者一旦发 出 lease,则无论接受方是否收到,也无论后续接收方处于何种状态,只要 lease 不过期,颁发者一 定严守承诺;另一方面,接收方在 lease 的有效期内可以使用颁发者的承诺,但一旦 lease 过期,接收方一定不能继续使用颁发者的承诺。&lt;/p&gt;
+
+&lt;p&gt;由于 lease 是一种承诺,具体的承诺内容可以非常宽泛,可以是数据的正确性，如在lease有效期内不会修改数据;也可以是某种权限,例如当需要做并发控制时,同一时刻只给某一个节点颁发 lease,只有持有 lease 的节点才可以修改数据;也可以是某种身份,例如在 primary-secondary架构中,给节点颁发 lease,只有持有 lease 的节点才具有 primary 身份。&lt;/p&gt;
+
+&lt;p&gt;举例说明，GFS 中使用 Lease 确定 Chuck 的 Primary 副本。Lease 由 Master 节点颁发给 primary 副本,持有 Lease 的副本成为 primary 副本。Primary 副本控制该 chuck 的数据更新流量,确定并发更新操作在 chuck 上的执行顺序。GFS 中的 Lease 信息由 Master 在响应各个节点的 HeartBeat 时附带传递 (piggyback)。对于每一个 chuck,其上的并发更新操作的顺序在各个副本上是一致的,首先 master 选择 primary 的顺序,即颁发 Lease 的顺序,在每一任的 primary 任期内,每个 primary 决定并发更 新的顺序,从而更新操作的顺序最终全局一致。当 GFS 的 master 失去某个节点的 HeartBeat 时,只需待该节点上的 primary chuck 的 Lease 超时,就可以为这些 chuck 重新选择 primary 副本并颁发 lease。&lt;/p&gt;
+
+&lt;h4 id=&quot;quorum机制&quot;&gt;Quorum机制&lt;/h4&gt;
+&lt;p&gt;在 Quorum 机制下,当某次更新操作 wi 一旦在所有 N 个副本中的 W 个副本上都成功,则就称 该更新操作为“成功提交的更新操作”,称对应的数据为“成功提交的数据”。令 R&amp;gt;N-W,由于更新 操作 wi 仅在 W 个副本上成功,所以在读取数据时,最多需要读取 R 个副本则一定能读到 wi 更新后 的数据 vi 。如果某次更新 wi 在 W 个副本上成功,由于 W+R&amp;gt;N,任意 R 个副本组成的集合一定与 成功的W个副本组成的集合有交集,所以读取R个副本一定能读到wi更新后的数据vi。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/public/qorum.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;举例说明：&lt;br /&gt;
+某系统有 5 个副本,W=3,R=3,最初 5 个副本的数据一致,都是 v1,某次更新操作 w2 在前 3 副本上成功,副本情况变成(v2 v2 v2 v1 v1)。此时,任意 3 个副本组成的集合中一定包括 v2。&lt;/p&gt;
+
+&lt;p&gt;限制 Quorum 参数为 W+R=N+1。由于更新 操作需要在 W 个副本上都成功,更新操作才能成功,所以一旦 N-W+1 个副本异常,更新操作始终 无法在 W 个副本上成功,更新服务不可用。另一方面,一旦 N-R+1 个副本异常,则无法保证一定 可以读到与 W 个副本有交集的副本集合,则读服务的一致性下降。&lt;/p&gt;
+
+&lt;p&gt;N=5,W=2,R=3 时,若 4 个副本异常,更新操作始终无法完成。若 3 个副本异常时, 剩下的两个副本虽然可以提供更新服务,但对于读取者而言,在缺乏某些 magic 机制的,即如果读 取者不知道当前最新已成功提交的版本是什么的时候,仅仅读取 2 个副本并不能保证一定可以读到最新的已提交的数据。&lt;/p&gt;
+
+&lt;p&gt;这里再次强调:&lt;strong&gt;仅仅依赖 quorum 机制是无法保证强一致性的&lt;/strong&gt;。因为仅有 quorum 机制时无法确 定最新已成功提交的版本号,除非将最新已提交的版本号作为元数据由特定的元数据服务器或元数据集群管理,否则很难确定最新成功提交的版本号。&lt;/p&gt;
+
+&lt;h4 id=&quot;paxos&quot;&gt;Paxos&lt;/h4&gt;
+&lt;p&gt;去中心化的强一致性协议，具体可以参考wiki &lt;sup id=&quot;fnref:paxos&quot;&gt;&lt;a href=&quot;#fn:paxos&quot; class=&quot;footnote&quot;&gt;6&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;h4 id=&quot;raft&quot;&gt;Raft&lt;/h4&gt;
+&lt;p&gt;通过去中心化的leader选举转化成中心化控制的强一致性协议&lt;/p&gt;
+
+&lt;h4 id=&quot;2pc3pc&quot;&gt;2PC/3PC&lt;/h4&gt;
+&lt;p&gt;中心化的强一致性协议&lt;/p&gt;
+
+&lt;h4 id=&quot;master-slave&quot;&gt;Master-Slave&lt;/h4&gt;
+&lt;p&gt;中心化的协议，可以根据同步协议来达到不同的一致性级别。举例，mysql的主从同步可以是async、semi-sync、sync来平衡性能和一致性&lt;/p&gt;
+
+&lt;h4 id=&quot;mq&quot;&gt;MQ&lt;/h4&gt;
+&lt;p&gt;通过MQ,日志表等方式达到最终一致性&lt;/p&gt;
+
+&lt;h2 id=&quot;引用&quot;&gt;引用&lt;/h2&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:consistent&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/Consistency_(database_systems) &lt;a href=&quot;#fnref:consistent&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:ACID&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/ACID &lt;a href=&quot;#fnref:ACID&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:Consistent_model&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/Consistency_model &lt;a href=&quot;#fnref:Consistent_model&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:CAP&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/CAP_theorem &lt;a href=&quot;#fnref:CAP&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:PACELC&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/PACELC_theorem &lt;a href=&quot;#fnref:PACELC&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:paxos&quot;&gt;
+      &lt;p&gt;https://en.wikipedia.org/wiki/Paxos_(computer_science) &lt;a href=&quot;#fnref:paxos&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</content>
+ </entry>
+ 
+
+</feed>
