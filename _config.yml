@@ -2,8 +2,7 @@ title:            Laurence
 tagline:          
 description:      '读书、思考'
 url:              laurenceqi.me
-baseurl:          /
-
+baseurl:          http://laurenceqi.me/
 
 paginate:         5
 
