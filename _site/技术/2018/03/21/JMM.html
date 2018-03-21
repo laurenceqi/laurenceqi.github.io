@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      你应该知道的Java内存模型（一） &middot; Laurence
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/favicon.ico">
+  <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+</head>
+
+
+  <body class="">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+        <a href="/">
+          Laurence
+        </a>
+      </h1>
+      <p class="lead">读书、思考</p>
+    </div>
+
+    <nav class="sidebar-nav">
+<!--       <a class="sidebar-nav-item" href="/">Home</a>
+ -->
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about.html">About</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/">Index</a>
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/tags.html">Tags</a>
+          
+        
+      
+
+    </nav>
+
+    <p>&copy; 2018. laurence 版权所有.</p>
+  </div>
+</div>
+
+
+    <div class="content container">
+      	<div class="post">
+  <h1 class="post-title">你应该知道的Java内存模型（一）</h1>
+  <span class="post-date">21 Mar 2018</span>
+  <h2 id="什么是java内存模型">什么是JAVA内存模型？</h2>
+<p>因为CPU处理的速度比内存读取的速度快很多，通过缓存可以极大的提升CPU处理速度。并且，多级缓存的设计，可以平衡缓存大小与芯片体积、成本，在现代CPU中广泛使用。在多核的条件下，如果多个核同时读写内存的同一行，如何保证数据的一致性？</p>
+
+<p>在处理器级别，内存模型定义了什么条件下该核能够看到其他核的写入和该核的写入能够对其他核可见。有以下两种模型：</p>
+
+<ul>
+  <li>强一致内存模型，即任何时间任何核的写入都对其他核可见</li>
+  <li>弱一致内存模型，即通过一些特殊的内存屏障指令（Memory Barrier)，来刷新内存或者失效本地核处理器缓存，来保证核间的可见性。</li>
+</ul>
+
+<p>现在弱一致内存模型越来越流行，因为对一致性的弱化为CPU的性能优化提供了更大的空间。</p>
+
+<p>除了缓存的问题，编译器对<strong>代码的重排序</strong>更加加重了一致性问题。只要没有改变程序的语义，编译器可以自由的调整代码的执行顺序，提前或延后代码的执行，所以对内存的写入也会提前或延后。在真正写入前，其他核是无法看到对内存所做的读写的。<br />
+<strong>这不是Bug，设计就是这样。</strong>只要不违反内存模型的定义，编译器、运行时、硬件都可以自由的去调整执行顺序，来得到最优的性能。</p>
+
+<p>举个例子：</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="n">Class</span> <span class="n">Reordering</span> <span class="o">{</span>
+  <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">writer</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span><span class="o">;</span>
+  <span class="o">}</span>
+
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">reader</span><span class="o">()</span> <span class="o">{</span>
+    <span class="kt">int</span> <span class="n">r1</span> <span class="o">=</span> <span class="n">y</span><span class="o">;</span>
+    <span class="kt">int</span> <span class="n">r2</span> <span class="o">=</span> <span class="n">x</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>如果读写在两个线程中并发执行，并且读到了r1=2，那么，r2=1吗？<br />
+<strong>不一定</strong>，写线程可能做了代码重排序，如果执行顺序如下：</p>
+
+<ol>
+  <li>写线程写y=2</li>
+  <li>读线程读y=2，x=0</li>
+  <li>写线程写x=1</li>
+</ol>
+
+<p>程序的执行结果是r1=2， r2=0</p>
+
+<p>最后，引出我们问题的答案，JAVA内存模型定义了在多线程环境下什么样的行为是合法的，并且线程间是如何跟内存交互的。他描述了代码变量跟内存、寄存器处理这些变量的底层实现之前的关系。通过JAVA内存模型的定义，提供了一种使用多种硬件、多种编译器等优化方法仍然能正确运行代码的约定。</p>
+
+<p>Java包含多个关键词volatile，final，synchronized，用来帮助程序员描述并发语义。JAVA内存模型定义了volatile和synchronized的行为，并且确保正确同步的代码在所有的处理器架构上都能正确执行。</p>
+
+<h2 id="为什么其他语言没有如c">为什么其他语言没有，如C++？</h2>
+<p>其他的大部分语言，如C或C++，并没有对多线程提供直接的支持。在多种处理器架构、多种编译器下，多线程的正确执行严重依赖所使用的多线程类库，编译器和程序运行的硬件平台。</p>
+
+<h2 id="内存模型的历史">内存模型的历史</h2>
+
+<p>原来JAVA语言规范里面定义了一个老版本的Java内存模型，但是慢慢发现了很多缺陷，比如volatile的定义。
+随后又制定了现行的JAVA内存模型，即JSR133，提供了一系列内存模型正式的语义。</p>
+
+</div>
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/%E8%AF%BB%E4%B9%A6/2018/03/20/%E5%8E%9F%E5%88%99-%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">
+            《原则》读书笔记
+            <small>20 Mar 2018</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/%E6%8A%80%E6%9C%AF/2018/03/19/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E7%AC%94%E8%AE%B0.html">
+            分布式一致性笔记
+            <small>19 Mar 2018</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+
+var disqus_config = function () {
+this.page.url = "http://laurenceqi.me/%E6%8A%80%E6%9C%AF/2018/03/21/JMM.html";  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = "/%E6%8A%80%E6%9C%AF/2018/03/21/JMM"; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://laurenceqi.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                            
+
+    </div>
+  </body>
+</html>
