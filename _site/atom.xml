@@ -4,13 +4,127 @@
  <title>Laurence</title>
  <link href="http://localhost:4000/atom.xml" rel="self"/>
  <link href="http://localhost:4000/"/>
- <updated>2018-03-21T23:50:04+08:00</updated>
+ <updated>2018-03-22T20:11:15+08:00</updated>
  <id>http://localhost:4000</id>
  <author>
    <name></name>
    <email></email>
  </author>
 
+ 
+ <entry>
+   <title>你应该知道的Java内存模型（二）</title>
+   <link href="http://localhost:4000/%E6%8A%80%E6%9C%AF/2018/03/22/JMM2.html"/>
+   <updated>2018-03-22T00:00:00+08:00</updated>
+   <id>http://localhost:4000/%E6%8A%80%E6%9C%AF/2018/03/22/JMM2</id>
+   <content type="html">&lt;h2 id=&quot;什么是指令重排序&quot;&gt;什么是指令重排序？&lt;/h2&gt;
+&lt;p&gt;第一篇文章已经讲了指令重排序的例子。&lt;br /&gt;
+代码实际执行时，访问变量的指令可能会因为以下原因与代码顺序不符：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;编译器为优化性能重排指令&lt;/li&gt;
+  &lt;li&gt;处理器在特定情况下重排指令执行顺序&lt;/li&gt;
+  &lt;li&gt;数据在寄存器、处理器缓存、内存之间的移动顺序&lt;/li&gt;
+  &lt;li&gt;其他的一些原因，如JIT等&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;指令重排，从单线程的角度来看，规范规定了不会影响输出结果。但如果一个变量被&lt;strong&gt;多个线程同时访问&lt;/strong&gt;，重排就会影响变量的一致性。&lt;br /&gt;
+为了能够在多线程环境下正确的访问变量，因此需要&lt;strong&gt;正确&lt;/strong&gt;的Synchronization。&lt;/p&gt;
+
+&lt;h2 id=&quot;什么叫做-不正确-的同步&quot;&gt;什么叫做 &lt;em&gt;不正确&lt;/em&gt; 的同步？&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;一个线程写入一个变量&lt;/li&gt;
+  &lt;li&gt;另外一个线程读取同一个变量&lt;/li&gt;
+  &lt;li&gt;对这个变量的读写没有使用&lt;strong&gt;同步机制&lt;/strong&gt;来决定顺序&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;所有违反上述条件的都会产生竞态，是不正确的同步。&lt;/p&gt;
+
+&lt;h2 id=&quot;同步机制是做什么的&quot;&gt;同步机制是做什么的？&lt;/h2&gt;
+
+&lt;p&gt;同步主要有以下几种影响：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;strong&gt;互斥排他&lt;/strong&gt;&lt;br /&gt;
+同时只能有一个线程获得Monitor。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;内存可见性&lt;/strong&gt;&lt;br /&gt;
+当一个线程释放同步锁的时候，会确保自己的写入对其他线程可见。可能是通过数据刷入内存、其他线程失效本地缓存等方式。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;禁止重排序&lt;/strong&gt;&lt;br /&gt;
+在同步锁的获取和释放前后的代码块，不会重排序。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;新的Java内存模型在内存操作（读字段，写字段，lock，unlock）和线程操作（start，join）之间定义了顺序，叫做一种操作 &lt;strong&gt;happens before&lt;/strong&gt; 其他操作。当一种操作happens before另外一种操作时，第一个操作被确保在第二个操作之前执行，而且操作内容对第二个操作可见。具体规则如下：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;单线程里面每个操作 happens before 程序里面此操作后面的操作&lt;/li&gt;
+  &lt;li&gt;对一个monitor的unlock操作 happens before 在&lt;strong&gt;这个monitor&lt;/strong&gt;上所有后续的lock操作&lt;/li&gt;
+  &lt;li&gt;对一个volatile字段的写入 happens before 对&lt;strong&gt;这个字段&lt;/strong&gt;的所有后续读操作&lt;/li&gt;
+  &lt;li&gt;对一个线程的start操作 happens before 此启动线程里面的任何操作&lt;/li&gt;
+  &lt;li&gt;对一个线程使用join操作，被join线程里面的任何操作 happens before join() 调用的返回&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;所以，如果对一个monitor进行同步，所有释放monitor前的操作都对后续获取monitor的线程可见。因为所有的内存操作 happens before 所释放， 锁释放 happens before 接下来的锁获取。&lt;/p&gt;
+
+&lt;h2 id=&quot;final是怎么样工作的&quot;&gt;final是怎么样工作的？&lt;/h2&gt;
+&lt;p&gt;只要对象是被 &lt;strong&gt;正确的构造&lt;/strong&gt; 的，只要这个对象构造完成，赋值给final字段的值即使没有同步机制，对其他所有的线程也是可见的。即使final字段是其他对象或数组的引用，这些引用值也至少跟final字段一样是 &lt;em&gt;up to date as of the end of the object’s constructor&lt;/em&gt; 。&lt;/p&gt;
+
+&lt;p&gt;正确的构造的含义是指在构造过程中，该对象的引用没有泄露。具体可以参考链接 &lt;a href=&quot;https://www.ibm.com/developerworks/library/j-jtp0618/&quot;&gt;Safe Construction Techniques&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;简单举个没有正确构造的例子：&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;FinalFieldExample&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// bad!&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;y&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;4&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// bad construction - allowing this to escape&lt;/span&gt;
+  &lt;span class=&quot;n&quot;&gt;global&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;obj&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;虽然说了这么多，但如果一个线程创建了一个不可变对象（所有字段都是final），你想让其他线程能够正确看到这个对象，&lt;strong&gt;你还是需要使用同步&lt;/strong&gt;。因为对这个对象的引用，如果你不使用同步机制，是无法保证被其他线程可见的。&lt;/p&gt;
+
+&lt;h2 id=&quot;volatile是干什么的&quot;&gt;volatile是干什么的？&lt;/h2&gt;
+&lt;p&gt;Volatile是用来线程间交换状态特殊关键字。每次volatile读都会读到其他任何线程上次写入的值。每次写入后，都会刷入内存。每次读取前，也会失效本地缓存，直接从内存读取。除此之外，还有特殊的限制，跟老的内存模型不同，新的内存模型不允许在volatile字段前后进行指令重排序。当线程A在写volatile字段f前所有可见的字段都会线程B读取f时可见。
+举例：&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;VolatileExample&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;volatile&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;boolean&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;v&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;writer&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;x&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;42&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;v&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;reader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;v&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;c1&quot;&gt;//uses x - guaranteed to see 42.&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;所以对volatile来说就是半个synchronized，在内存可见性方面保持一样，但不具有排他性。&lt;/p&gt;
+
+&lt;h2 id=&quot;double-checked-locking&quot;&gt;double-checked locking&lt;/h2&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// double-checked-locking - don't do this!&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;synchronized&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;上面的写法是有问题的，大家可以根据学到的知识进行分析一下，哪些地方存在问题？如何解决？有没有更好的单例写法？&lt;/p&gt;
+
+&lt;h2 id=&quot;引用&quot;&gt;引用&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html&quot;&gt;JSR133 FAQ&lt;/a&gt;&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>你应该知道的Java内存模型（一）</title>
