@@ -4,7 +4,7 @@
  <title>Laurence</title>
  <link href="http://localhost:4000/atom.xml" rel="self"/>
  <link href="http://localhost:4000/"/>
- <updated>2018-03-22T20:11:15+08:00</updated>
+ <updated>2018-03-22T23:03:59+08:00</updated>
  <id>http://localhost:4000</id>
  <author>
    <name></name>
@@ -57,7 +57,7 @@
 &lt;p&gt;新的Java内存模型在内存操作（读字段，写字段，lock，unlock）和线程操作（start，join）之间定义了顺序，叫做一种操作 &lt;strong&gt;happens before&lt;/strong&gt; 其他操作。当一种操作happens before另外一种操作时，第一个操作被确保在第二个操作之前执行，而且操作内容对第二个操作可见。具体规则如下：&lt;/p&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;单线程里面每个操作 happens before 程序里面此操作后面的操作&lt;/li&gt;
+  &lt;li&gt;单线程里面每个操作 happens before 代码里面此操作后面的操作&lt;/li&gt;
   &lt;li&gt;对一个monitor的unlock操作 happens before 在&lt;strong&gt;这个monitor&lt;/strong&gt;上所有后续的lock操作&lt;/li&gt;
   &lt;li&gt;对一个volatile字段的写入 happens before 对&lt;strong&gt;这个字段&lt;/strong&gt;的所有后续读操作&lt;/li&gt;
   &lt;li&gt;对一个线程的start操作 happens before 此启动线程里面的任何操作&lt;/li&gt;
@@ -65,6 +65,14 @@
 &lt;/ol&gt;
 
 &lt;p&gt;所以，如果对一个monitor进行同步，所有释放monitor前的操作都对后续获取monitor的线程可见。因为所有的内存操作 happens before 所释放， 锁释放 happens before 接下来的锁获取。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;P.s. Rule1特别解释：&lt;/strong&gt;&lt;br /&gt;
+rule1定义了单线程里面所有操作都是按照代码顺序执行的，那是不是就不会产生重排序了？因为重排序后就跟代码顺序不一样了。&lt;br /&gt;
+答案是，&lt;strong&gt;No，仍然会重排序&lt;/strong&gt;。具体可以参考stackoverflow链接 &lt;a href=&quot;[^happens]&quot;&gt;重排序与happens before&lt;/a&gt;&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;It should be noted that the presence of a happens-before relationship between two actions does not necessarily imply that they have to take place in that order in an implementation. If the reordering produces results consistent with a legal execution, it is not illegal.&lt;/p&gt;
+&lt;/blockquote&gt;
 
 &lt;h2 id=&quot;final是怎么样工作的&quot;&gt;final是怎么样工作的？&lt;/h2&gt;
 &lt;p&gt;只要对象是被 &lt;strong&gt;正确的构造&lt;/strong&gt; 的，只要这个对象构造完成，赋值给final字段的值即使没有同步机制，对其他所有的线程也是可见的。即使final字段是其他对象或数组的引用，这些引用值也至少跟final字段一样是 &lt;em&gt;up to date as of the end of the object’s constructor&lt;/em&gt; 。&lt;/p&gt;
@@ -83,7 +91,7 @@
 &lt;p&gt;虽然说了这么多，但如果一个线程创建了一个不可变对象（所有字段都是final），你想让其他线程能够正确看到这个对象，&lt;strong&gt;你还是需要使用同步&lt;/strong&gt;。因为对这个对象的引用，如果你不使用同步机制，是无法保证被其他线程可见的。&lt;/p&gt;
 
 &lt;h2 id=&quot;volatile是干什么的&quot;&gt;volatile是干什么的？&lt;/h2&gt;
-&lt;p&gt;Volatile是用来线程间交换状态特殊关键字。每次volatile读都会读到其他任何线程上次写入的值。每次写入后，都会刷入内存。每次读取前，也会失效本地缓存，直接从内存读取。除此之外，还有特殊的限制，跟老的内存模型不同，新的内存模型不允许在volatile字段前后进行指令重排序。当线程A在写volatile字段f前所有可见的字段都会线程B读取f时可见。
+&lt;p&gt;Volatile是用来线程间交换状态特殊关键字。每次 volatile 读都会读到其他任何线程上次写入的值。每次写入后，都会刷入内存。每次读取前，也会失效本地缓存，直接从内存读取。除此之外，还有特殊的限制，跟老的内存模型不同，新的内存模型不允许在volatile字段前后进行指令重排序。当线程 A 在写 volatile 字段 f 前所有可见的字段都会线程 B 读取 f 时可见。
 举例：&lt;/p&gt;
 
 &lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;VolatileExample&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
@@ -123,6 +131,116 @@
 
 &lt;h2 id=&quot;引用&quot;&gt;引用&lt;/h2&gt;
 &lt;p&gt;&lt;a href=&quot;https://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html&quot;&gt;JSR133 FAQ&lt;/a&gt;&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>Double-checked Lock 到底有什么问题？</title>
+   <link href="http://localhost:4000/%E6%8A%80%E6%9C%AF/2018/03/22/DoubleChecked.html"/>
+   <updated>2018-03-22T00:00:00+08:00</updated>
+   <id>http://localhost:4000/%E6%8A%80%E6%9C%AF/2018/03/22/DoubleChecked</id>
+   <content type="html">&lt;p&gt;为了减少同步的开销，又想lazy initialize实例，所以一种”聪明“的做法出现了：&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;c1&quot;&gt;// double-checked-locking - don't do this!&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;synchronized&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;但是，&lt;strong&gt;这并不总是正确工作&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;原因一&quot;&gt;原因一&lt;/h3&gt;
+&lt;p&gt;当线程 A 执行到第 9 行时，会执行实例的创建、初始化及赋值，如果此时线程 B 执行到第 6 行，读取 instance 对象的值，因为该步骤不存在任何 happens before 关系， 所以可能读到指令重排序后的值。如果重排序后，指令顺序是：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;线程 A 创建 Something 对象实例 S&lt;/li&gt;
+  &lt;li&gt;线程 A 将 S 的引用赋值给 instance 对象&lt;/li&gt;
+  &lt;li&gt;线程 B 读取 instance 对象不为 null， 并返回引用&lt;/li&gt;
+  &lt;li&gt;线程 A 初始化instance对象&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;该种情况下，就会返回一个没有初始化的实例，导致程序运行错误。&lt;/p&gt;
+
+&lt;p&gt;重排序后的字节码可能是这样：&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-assembly&quot; data-lang=&quot;assembly&quot;&gt;0206106A   mov         eax,0F97E78h
+0206106F   call        01F6B210                  ; allocate space for
+                                                 ; Singleton, return result in eax
+02061074   mov         dword ptr [ebp],eax       ; EBP is &amp;amp;singletons[i].reference 
+                                                 ; store the unconstructed object here.
+02061077   mov         ecx,dword ptr [eax]       ; dereference the handle to
+                                                 ; get the raw pointer
+02061079   mov         dword ptr [ecx],100h      ; Next 4 lines are
+0206107F   mov         dword ptr [ecx+4],200h    ; Singleton's inlined constructor
+02061086   mov         dword ptr [ecx+8],400h
+0206108D   mov         dword ptr [ecx+0Ch],0F84030h&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;&amp;amp;singletons[i].reference 对引用的赋值早于构造函数。&lt;/p&gt;
+
+&lt;h3 id=&quot;原因二&quot;&gt;原因二&lt;/h3&gt;
+&lt;p&gt;即使上述步骤中第6行读到了实例变量都赋值的实例 S， S的引用类型实例变量所指向的对象有可能也是状态不对的。所以返回的实例仍然存在问题。比如:&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt;  &lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+	&lt;span class=&quot;n&quot;&gt;Something1&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;,&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;即使实例S的实例变量a != null, b != null, a,b所指向的对象仍有可能是未初始化完全的。&lt;/p&gt;
+
+&lt;h3 id=&quot;正确做法&quot;&gt;正确做法&lt;/h3&gt;
+&lt;p&gt;在老的Java内存模型定义下，并没有好的办法来解决Double checked问题，但可以通过 On Demand Holder 类来解决。&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;LazySomethingHolder&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;something&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;LazySomethingHolder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;something&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;在新的内存模型定义下，则可以通过 Volatile 关键字来解决。&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;&lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;volatile&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;static&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;getInstance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;synchronized&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;this&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Something&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instance&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;为什么使用 volatile 关键词就可以解决该问题呢？&lt;/p&gt;
+
+&lt;h3 id=&quot;引用&quot;&gt;引用&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html&quot;&gt;http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.javaworld.com/article/2074979/java-concurrency/double-checked-locking--clever--but-broken.html?page=2&quot;&gt;https://www.javaworld.com/article/2074979/java-concurrency/double-checked-locking–clever–but-broken.html?page=2&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
 </content>
  </entry>
  
