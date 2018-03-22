@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      你应该知道的Java内存模型（二） &middot; Laurence
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/favicon.ico">
+  <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+</head>
+
+
+  <body class="">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+        <a href="/">
+          Laurence
+        </a>
+      </h1>
+      <p class="lead">读书、思考</p>
+    </div>
+
+    <nav class="sidebar-nav">
+<!--       <a class="sidebar-nav-item" href="/">Home</a>
+ -->
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about.html">About</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/">Index</a>
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/tags.html">Tags</a>
+          
+        
+      
+
+    </nav>
+
+    <p>&copy; 2018. laurence 版权所有.</p>
+  </div>
+</div>
+
+
+    <div class="content container">
+      	<div class="post">
+  <h1 class="post-title">你应该知道的Java内存模型（二）</h1>
+  <span class="post-date">22 Mar 2018</span>
+  <h2 id="什么是指令重排序">什么是指令重排序？</h2>
+<p>第一篇文章已经讲了指令重排序的例子。<br />
+代码实际执行时，访问变量的指令可能会因为以下原因与代码顺序不符：</p>
+
+<ol>
+  <li>编译器为优化性能重排指令</li>
+  <li>处理器在特定情况下重排指令执行顺序</li>
+  <li>数据在寄存器、处理器缓存、内存之间的移动顺序</li>
+  <li>其他的一些原因，如JIT等</li>
+</ol>
+
+<p>指令重排，从单线程的角度来看，规范规定了不会影响输出结果。但如果一个变量被<strong>多个线程同时访问</strong>，重排就会影响变量的一致性。<br />
+为了能够在多线程环境下正确的访问变量，因此需要<strong>正确</strong>的Synchronization。</p>
+
+<h2 id="什么叫做-不正确-的同步">什么叫做 <em>不正确</em> 的同步？</h2>
+
+<ol>
+  <li>一个线程写入一个变量</li>
+  <li>另外一个线程读取同一个变量</li>
+  <li>对这个变量的读写没有使用<strong>同步机制</strong>来决定顺序</li>
+</ol>
+
+<p>所有违反上述条件的都会产生竞态，是不正确的同步。</p>
+
+<h2 id="同步机制是做什么的">同步机制是做什么的？</h2>
+
+<p>同步主要有以下几种影响：</p>
+
+<ol>
+  <li><strong>互斥排他</strong><br />
+同时只能有一个线程获得Monitor。</li>
+  <li><strong>内存可见性</strong><br />
+当一个线程释放同步锁的时候，会确保自己的写入对其他线程可见。可能是通过数据刷入内存、其他线程失效本地缓存等方式。</li>
+  <li><strong>禁止重排序</strong><br />
+在同步锁的获取和释放前后的代码块，不会重排序。</li>
+</ol>
+
+<p>新的Java内存模型在内存操作（读字段，写字段，lock，unlock）和线程操作（start，join）之间定义了顺序，叫做一种操作 <strong>happens before</strong> 其他操作。当一种操作happens before另外一种操作时，第一个操作被确保在第二个操作之前执行，而且操作内容对第二个操作可见。具体规则如下：</p>
+
+<ol>
+  <li>单线程里面每个操作 happens before 程序里面此操作后面的操作</li>
+  <li>对一个monitor的unlock操作 happens before 在<strong>这个monitor</strong>上所有后续的lock操作</li>
+  <li>对一个volatile字段的写入 happens before 对<strong>这个字段</strong>的所有后续读操作</li>
+  <li>对一个线程的start操作 happens before 此启动线程里面的任何操作</li>
+  <li>对一个线程使用join操作，被join线程里面的任何操作 happens before join() 调用的返回</li>
+</ol>
+
+<p>所以，如果对一个monitor进行同步，所有释放monitor前的操作都对后续获取monitor的线程可见。因为所有的内存操作 happens before 所释放， 锁释放 happens before 接下来的锁获取。</p>
+
+<h2 id="final是怎么样工作的">final是怎么样工作的？</h2>
+<p>只要对象是被 <strong>正确的构造</strong> 的，只要这个对象构造完成，赋值给final字段的值即使没有同步机制，对其他所有的线程也是可见的。即使final字段是其他对象或数组的引用，这些引用值也至少跟final字段一样是 <em>up to date as of the end of the object’s constructor</em> 。</p>
+
+<p>正确的构造的含义是指在构造过程中，该对象的引用没有泄露。具体可以参考链接 <a href="https://www.ibm.com/developerworks/library/j-jtp0618/">Safe Construction Techniques</a></p>
+
+<p>简单举个没有正确构造的例子：</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="nf">FinalFieldExample</span><span class="o">()</span> <span class="o">{</span> <span class="c1">// bad!</span>
+  <span class="n">x</span> <span class="o">=</span> <span class="mi">3</span><span class="o">;</span>
+  <span class="n">y</span> <span class="o">=</span> <span class="mi">4</span><span class="o">;</span>
+  <span class="c1">// bad construction - allowing this to escape</span>
+  <span class="n">global</span><span class="o">.</span><span class="na">obj</span> <span class="o">=</span> <span class="k">this</span><span class="o">;</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>虽然说了这么多，但如果一个线程创建了一个不可变对象（所有字段都是final），你想让其他线程能够正确看到这个对象，<strong>你还是需要使用同步</strong>。因为对这个对象的引用，如果你不使用同步机制，是无法保证被其他线程可见的。</p>
+
+<h2 id="volatile是干什么的">volatile是干什么的？</h2>
+<p>Volatile是用来线程间交换状态特殊关键字。每次volatile读都会读到其他任何线程上次写入的值。每次写入后，都会刷入内存。每次读取前，也会失效本地缓存，直接从内存读取。除此之外，还有特殊的限制，跟老的内存模型不同，新的内存模型不允许在volatile字段前后进行指令重排序。当线程A在写volatile字段f前所有可见的字段都会线程B读取f时可见。
+举例：</p>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="kd">class</span> <span class="nc">VolatileExample</span> <span class="o">{</span>
+  <span class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+  <span class="kd">volatile</span> <span class="kt">boolean</span> <span class="n">v</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">writer</span><span class="o">()</span> <span class="o">{</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="mi">42</span><span class="o">;</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+  <span class="o">}</span>
+
+  <span class="kd">public</span> <span class="kt">void</span> <span class="nf">reader</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">v</span> <span class="o">==</span> <span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">//uses x - guaranteed to see 42.</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>所以对volatile来说就是半个synchronized，在内存可见性方面保持一样，但不具有排他性。</p>
+
+<h2 id="double-checked-locking">double-checked locking</h2>
+
+<figure class="highlight"><pre><code class="language-java" data-lang="java"><span class="c1">// double-checked-locking - don't do this!</span>
+
+<span class="kd">private</span> <span class="kd">static</span> <span class="n">Something</span> <span class="n">instance</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+
+<span class="kd">public</span> <span class="n">Something</span> <span class="nf">getInstance</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">instance</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">instance</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Something</span><span class="o">();</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+  <span class="k">return</span> <span class="n">instance</span><span class="o">;</span>
+<span class="o">}</span></code></pre></figure>
+
+<p>上面的写法是有问题的，大家可以根据学到的知识进行分析一下，哪些地方存在问题？如何解决？有没有更好的单例写法？</p>
+
+<h2 id="引用">引用</h2>
+<p><a href="https://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html">JSR133 FAQ</a></p>
+
+</div>
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/%E6%8A%80%E6%9C%AF/2018/03/21/JMM.html">
+            你应该知道的Java内存模型（一）
+            <small>21 Mar 2018</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/%E8%AF%BB%E4%B9%A6/2018/03/20/%E5%8E%9F%E5%88%99-%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0.html">
+            《原则》读书笔记
+            <small>20 Mar 2018</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/%E6%8A%80%E6%9C%AF/2018/03/19/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E7%AC%94%E8%AE%B0.html">
+            分布式一致性笔记
+            <small>19 Mar 2018</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+
+var disqus_config = function () {
+this.page.url = "http://laurenceqi.me/%E6%8A%80%E6%9C%AF/2018/03/22/JMM2.html";  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = "/%E6%8A%80%E6%9C%AF/2018/03/22/JMM2"; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://laurenceqi.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                            
+
+    </div>
+  </body>
+</html>
