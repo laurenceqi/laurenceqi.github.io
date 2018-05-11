@@ -81,17 +81,18 @@ public static Something getInstance() {
 在新的内存模型定义下，则可以通过 Volatile 关键字来解决。
 
 {% highlight java %}
-
-private static volatile Something instance = null;
-
-public static Something getInstance() {
-  if (instance == null) {
-    synchronized (this) {
-      if (instance == null)
-        instance = new Something();
-    }
-  }
-  return instance;
+class Singleton{
+	private static volatile Something instance = null;
+	
+	public static Something getInstance() {
+	  if (instance == null) {
+	    synchronized (Singleton.class) {
+	      if (instance == null)
+	        instance = new Something();
+	    }
+	  }
+	  return instance;
+	}
 }
 {% endhighlight %}
 
