@@ -1,8 +1,8 @@
 title:            Laurence
 tagline:          
-description:      '读书、思考'
-url:              laurenceqi.me
-baseurl:          http://laurenceqi.me/
+description:      '自由、睿智'
+url:              laurenceqi.github.io
+baseurl:          http://laurenceqi.github.io/
 
 paginate:         5
 
